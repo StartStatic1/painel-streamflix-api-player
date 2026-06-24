@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Painel de Fontes — StreamFlixVIP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0a0a12;
+    --surface: #14141f;
+    --card: #181826;
+    --border: #232336;
+    --accent: #6d28d9;
+    --accent2: #8b5cf6;
+    --gold: #f0a830;
+    --red: #e5304a;
+    --text: #f4f3fa;
+    --muted: #8888a8;
+    --font: 'Outfit', sans-serif;
+    --font-display: 'Fraunces', serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg); color:var(--text); font-family:var(--font);
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .box {
+    width:100%; max-width:380px;
+    background:var(--card); border:1px solid var(--border);
+    border-radius:14px; padding:32px 28px;
+  }
+  .logo { font-family:var(--font-display); font-size:1.5rem; font-weight:700; margin-bottom:4px; text-align:center; }
+  .logo em { font-style:italic; color:var(--gold); }
+  .subtitle { color:var(--muted); font-size:0.84rem; text-align:center; margin-bottom:26px; }
+  .tabs { display:flex; gap:6px; background:var(--surface); border-radius:9px; padding:4px; margin-bottom:22px; }
+  .tab { flex:1; text-align:center; padding:8px; border-radius:7px; font-size:0.85rem; font-weight:600; color:var(--muted); cursor:pointer; transition:all .2s; }
+  .tab.active { background:var(--accent); color:#fff; }
+  label { display:block; font-size:0.78rem; color:var(--muted); font-weight:600; margin-bottom:6px; margin-top:16px; }
+  input {
+    width:100%; background:var(--surface); border:1px solid var(--border); color:var(--text);
+    font-family:var(--font); font-size:0.92rem; padding:11px 13px; border-radius:9px; outline:none;
+    transition:border-color .2s;
+  }
+  input:focus { border-color:var(--accent2); }
+  button.submit {
+    width:100%; margin-top:22px; background:var(--accent); color:#fff; border:none;
+    font-family:var(--font); font-weight:700; font-size:0.92rem; padding:12px; border-radius:9px;
+    cursor:pointer; transition:background .2s;
+  }
+  button.submit:hover { background:var(--accent2); }
+  button.submit:disabled { opacity:0.6; cursor:not-allowed; }
+  .msg { margin-top:14px; font-size:0.82rem; text-align:center; min-height:18px; }
+  .msg.error { color:var(--red); }
+  .msg.success { color:#4ade80; }
+  .hint { margin-top:18px; font-size:0.74rem; color:var(--muted); text-align:center; line-height:1.5; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">Stream<em>Flix</em>VIP</div>
+    <div class="subtitle">Painel de Fontes de Vídeo</div>
+
+    <div class="tabs">
+      <div class="tab active" id="tabLogin" onclick="switchMode('login')">Entrar</div>
+      <div class="tab" id="tabSignup" onclick="switchMode('signup')">Criar conta</div>
+    </div>
+
+    <form id="authForm">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" required autocomplete="email" />
+
+      <label for="password">Senha</label>
+      <input type="password" id="password" required autocomplete="current-password" minlength="6" />
+
+      <button type="submit" class="submit" id="submitBtn">Entrar</button>
+    </form>
+
+    <div class="msg" id="msg"></div>
+
+    <div class="hint" id="hint">
+      Criar conta não dá acesso automático ao painel — um admin existente
+      precisa autorizar seu e-mail no banco de dados primeiro.
+    </div>
+  </div>
+
+<script>
+  // ── CONFIG ──
+  // Troque pela URL e chave ANON (pública) do seu projeto Supabase.
+  // NUNCA coloque a service_role key aqui — esta chave fica visível no navegador.
+  const SUPABASE_URL = 'https://SEU-PROJETO.supabase.co';
+  const SUPABASE_ANON_KEY = 'SUA-CHAVE-ANON-PUBLICA-AQUI';
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let mode = 'login';
+
+  function switchMode(m) {
+    mode = m;
+    document.getElementById('tabLogin').classList.toggle('active', m === 'login');
+    document.getElementById('tabSignup').classList.toggle('active', m === 'signup');
+    document.getElementById('submitBtn').textContent = m === 'login' ? 'Entrar' : 'Criar conta';
+    document.getElementById('hint').style.display = m === 'signup' ? 'block' : 'none';
+    document.getElementById('msg').textContent = '';
+  }
+  switchMode('login');
+
+  // Se já tem sessão ativa, manda direto pro dashboard
+  (async function checkSession() {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+      window.location.href = './dashboard.html';
+    }
+  })();
+
+  document.getElementById('authForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('submitBtn');
+
+    btn.disabled = true;
+    msg.className = 'msg';
+    msg.textContent = '';
+
+    try {
+      if (mode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        // confirma se esse usuário está autorizado na tabela vip_panel_admins
+        const { data: adminRow, error: adminErr } = await supabase
+          .from('vip_panel_admins')
+          .select('id')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (adminErr || !adminRow) {
+          await supabase.auth.signOut();
+          throw new Error('Sua conta existe, mas ainda não foi autorizada a acessar este painel.');
+        }
+
+        window.location.href = './dashboard.html';
+      } else {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        msg.className = 'msg success';
+        msg.textContent = 'Conta criada! Avise um admin para autorizar seu e-mail no banco antes de entrar.';
+      }
+    } catch (err) {
+      msg.className = 'msg error';
+      msg.textContent = err.message || 'Algo deu errado. Tente novamente.';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
