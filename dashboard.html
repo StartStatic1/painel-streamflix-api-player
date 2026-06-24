@@ -266,9 +266,9 @@
     console.error('Promise rejeitada:', e.reason);
   });
 
-  let supabase = null;
+  let db = null;
   if (window.supabase) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   } else {
     document.body.innerHTML = `
       <div style="padding:40px;color:#e5304a;font-family:sans-serif;text-align:center">
@@ -282,28 +282,28 @@
 
   // logout() é sempre definido, mesmo se o Supabase falhar, pra nunca travar a saída
   function logout() {
-    if (!supabase) { window.location.href = './index.html'; return; }
-    supabase.auth.signOut().then(() => window.location.href = './index.html');
+    if (!db) { window.location.href = './index.html'; return; }
+    db.auth.signOut().then(() => window.location.href = './index.html');
   }
 
   // ── AUTH GUARD ──
-  if (supabase) {
+  if (db) {
     (async function guard() {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await db.auth.getSession();
       if (!data.session) {
         window.location.href = './index.html';
         return;
       }
       currentUser = data.session.user;
 
-      const { data: adminRow } = await supabase
+      const { data: adminRow } = await db
         .from('vip_panel_admins')
         .select('email, display_name, role')
         .eq('id', currentUser.id)
         .maybeSingle();
 
       if (!adminRow) {
-        await supabase.auth.signOut();
+        await db.auth.signOut();
         window.location.href = './index.html';
         return;
       }
@@ -345,7 +345,7 @@
 
       // checa quais já têm fonte cadastrada
       const ids = results.map(r => r.id);
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from('vip_sources')
         .select('tmdb_id')
         .eq('media_type', type)
@@ -432,7 +432,7 @@
     btn.textContent = 'Salvando...';
 
     try {
-      const { error } = await supabase.from('vip_sources').insert({
+      const { error } = await db.from('vip_sources').insert({
         tmdb_id: currentItem.id,
         media_type: currentItem.type,
         season, episode,
@@ -459,7 +459,7 @@
   // ── LISTA DE FONTES RECENTES ──
   async function loadRecentSources() {
     const wrap = document.getElementById('recentSourcesWrap');
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('vip_sources')
       .select('id, tmdb_id, media_type, season, episode, title, source_url, source_label, priority, is_active, created_at')
       .order('created_at', { ascending: false })
@@ -504,14 +504,14 @@
   }
 
   async function toggleActive(id, currentlyActive) {
-    const { error } = await supabase.from('vip_sources').update({ is_active: !currentlyActive }).eq('id', id);
+    const { error } = await db.from('vip_sources').update({ is_active: !currentlyActive }).eq('id', id);
     if (error) { showToast('Erro: ' + error.message, true); return; }
     loadRecentSources();
   }
 
   async function deleteSource(id) {
     if (!confirm('Excluir essa fonte? Essa ação não pode ser desfeita.')) return;
-    const { error } = await supabase.from('vip_sources').delete().eq('id', id);
+    const { error } = await db.from('vip_sources').delete().eq('id', id);
     if (error) { showToast('Erro: ' + error.message, true); return; }
     showToast('Fonte excluída.');
     loadRecentSources();
