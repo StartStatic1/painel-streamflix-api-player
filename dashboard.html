@@ -260,49 +260,57 @@
 
   // Mostra erros de JS não tratados visivelmente, em vez de falhar em silêncio.
   window.addEventListener('error', (e) => {
-    document.title = 'Erro — ' + (e.message || 'falha desconhecida');
     console.error('Erro não tratado:', e);
   });
   window.addEventListener('unhandledrejection', (e) => {
     console.error('Promise rejeitada:', e.reason);
   });
 
-  if (!window.supabase) {
-    document.body.innerHTML = '<div style="padding:40px;color:#e5304a;font-family:sans-serif;text-align:center">Não foi possível carregar a biblioteca do Supabase. Verifique sua conexão e recarregue a página.</div>';
-    throw new Error('window.supabase ausente — script da CDN não carregou.');
+  let supabase = null;
+  if (window.supabase) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    document.body.innerHTML = `
+      <div style="padding:40px;color:#e5304a;font-family:sans-serif;text-align:center">
+        Não foi possível carregar a biblioteca do Supabase.<br>Verifique sua conexão e recarregue a página.
+        <br><br><button onclick="window.location.reload()" style="padding:10px 20px;border-radius:8px;border:none;background:#6d28d9;color:#fff;cursor:pointer">Recarregar</button>
+      </div>`;
   }
 
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser = null;
   let currentItem = null; // item TMDB selecionado pro modal
 
-  // ── AUTH GUARD ──
-  (async function guard() {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
-      window.location.href = './index.html';
-      return;
-    }
-    currentUser = data.session.user;
-
-    const { data: adminRow } = await supabase
-      .from('vip_panel_admins')
-      .select('email, display_name, role')
-      .eq('id', currentUser.id)
-      .maybeSingle();
-
-    if (!adminRow) {
-      await supabase.auth.signOut();
-      window.location.href = './index.html';
-      return;
-    }
-
-    document.getElementById('userEmail').textContent = adminRow.display_name || adminRow.email;
-    loadRecentSources();
-  })();
-
+  // logout() é sempre definido, mesmo se o Supabase falhar, pra nunca travar a saída
   function logout() {
+    if (!supabase) { window.location.href = './index.html'; return; }
     supabase.auth.signOut().then(() => window.location.href = './index.html');
+  }
+
+  // ── AUTH GUARD ──
+  if (supabase) {
+    (async function guard() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = './index.html';
+        return;
+      }
+      currentUser = data.session.user;
+
+      const { data: adminRow } = await supabase
+        .from('vip_panel_admins')
+        .select('email, display_name, role')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (!adminRow) {
+        await supabase.auth.signOut();
+        window.location.href = './index.html';
+        return;
+      }
+
+      document.getElementById('userEmail').textContent = adminRow.display_name || adminRow.email;
+      loadRecentSources();
+    })();
   }
 
   function showToast(msg, isError = false) {
