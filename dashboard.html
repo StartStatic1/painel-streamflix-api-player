@@ -228,7 +228,12 @@
     </div>
 
     <label>URL do player / iframe</label>
-    <input type="text" id="sourceUrlInput" placeholder="https://..." />
+    <input type="text" id="sourceUrlInput" placeholder="https://... ou http://ip:porta/movie/..." oninput="previewUrl(this.value)" />
+    <div id="urlPreviewBox" style="margin-top:10px;display:none;">
+      <div style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-bottom:6px;">PRÉ-VISUALIZAÇÃO</div>
+      <div id="urlTypePill" style="display:inline-block;font-size:0.7rem;font-weight:700;padding:3px 10px;border-radius:6px;margin-bottom:8px;"></div>
+      <div id="urlPreviewFrame" style="width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border);"></div>
+    </div>
 
     <div class="row2">
       <div>
@@ -281,6 +286,43 @@
   let currentItem = null; // item TMDB selecionado pro modal
 
   // logout() é sempre definido, mesmo se o Supabase falhar, pra nunca travar a saída
+  // ── PREVIEW DE URL NO MODAL ──
+  function isDirectVideo(url) {
+    return /\.(mp4|m3u8|ts|mkv|webm)(\?|$)/i.test(url);
+  }
+  function previewUrl(url) {
+    url = url.trim();
+    const box   = document.getElementById('urlPreviewBox');
+    const pill  = document.getElementById('urlTypePill');
+    const frame = document.getElementById('urlPreviewFrame');
+    if (!url) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    frame.innerHTML = '';
+
+    if (isDirectVideo(url)) {
+      const isHttp = url.startsWith('http://');
+      pill.textContent = isHttp ? '⚠️ Arquivo direto (HTTP — mixed content!)' : '✅ Arquivo direto (HTTPS)';
+      pill.style.background = isHttp ? '#e5304a22' : '#4ade8022';
+      pill.style.color       = isHttp ? 'var(--red)'   : 'var(--green)';
+      if (isHttp) {
+        frame.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--red);font-size:0.8rem;padding:12px;text-align:center;">
+          ⚠️ Links <b>http://</b> não rodam em sites https://.<br>O player usará proxy automático no site.
+        </div>`;
+      } else {
+        const vid = document.createElement('video');
+        vid.src = url; vid.controls = true; vid.style.cssText = 'width:100%;height:100%;';
+        frame.appendChild(vid);
+      }
+    } else {
+      pill.textContent = '🎬 Link embed / iframe';
+      pill.style.background = '#6d28d922'; pill.style.color = 'var(--accent2)';
+      const ifr = document.createElement('iframe');
+      ifr.src = url; ifr.style.cssText = 'width:100%;height:100%;border:none;';
+      ifr.allow = 'autoplay; encrypted-media; picture-in-picture';
+      frame.appendChild(ifr);
+    }
+  }
+
   function logout() {
     if (!db) { window.location.href = './index.html'; return; }
     db.auth.signOut().then(() => window.location.href = './index.html');
@@ -409,6 +451,8 @@
   }
   function closeModal() {
     document.getElementById('modalOverlay').classList.remove('open');
+    document.getElementById('urlPreviewBox').style.display = 'none';
+    document.getElementById('urlPreviewFrame').innerHTML = '';
     currentItem = null;
   }
 
