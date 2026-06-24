@@ -92,8 +92,31 @@
   // ── CONFIG ──
   // Troque pela URL e chave ANON (pública) do seu projeto Supabase.
   // NUNCA coloque a service_role key aqui — esta chave fica visível no navegador.
-  const SUPABASE_URL = 'https://SEU-PROJETO.supabase.co';
-  const SUPABASE_ANON_KEY = 'SUA-CHAVE-ANON-PUBLICA-AQUI';
+  const SUPABASE_URL = 'https://gkujbjpvphuvrejpvvtz.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWpianB2cGh1dnJlanB2dnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQ2OTMsImV4cCI6MjA5NDI3MDY5M30.Zoqdn0V6SZOAfhz9kK9NgG6lniJdyVqihLsNT-O8Huw';
+
+  // Mostra qualquer erro de JavaScript não tratado direto na tela,
+  // pra nunca mais ter o sintoma de "clico e não acontece nada".
+  function showFatalError(text) {
+    const msg = document.getElementById('msg');
+    if (msg) {
+      msg.className = 'msg error';
+      msg.textContent = text;
+    } else {
+      alert(text);
+    }
+  }
+  window.addEventListener('error', (e) => {
+    showFatalError('Erro inesperado: ' + (e.message || 'falha desconhecida') + '. Veja o console para detalhes.');
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    showFatalError('Erro inesperado: ' + (e.reason?.message || e.reason || 'falha desconhecida') + '.');
+  });
+
+  if (!window.supabase) {
+    showFatalError('Não foi possível carregar a biblioteca do Supabase (script bloqueado ou sem internet). Recarregue a página.');
+    throw new Error('window.supabase ausente — script da CDN não carregou.');
+  }
 
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -111,9 +134,14 @@
 
   // Se já tem sessão ativa, manda direto pro dashboard
   (async function checkSession() {
-    const { data } = await supabase.auth.getSession();
-    if (data.session) {
-      window.location.href = './dashboard.html';
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) { showFatalError('Erro ao verificar sessão: ' + error.message); return; }
+      if (data.session) {
+        window.location.href = './dashboard.html';
+      }
+    } catch (err) {
+      showFatalError('Erro ao conectar com o Supabase: ' + err.message);
     }
   })();
 
