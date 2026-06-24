@@ -258,6 +258,20 @@
   const TMDB_BASE = 'https://api.themoviedb.org/3';
   const IMG_BASE = 'https://image.tmdb.org/t/p/';
 
+  // Mostra erros de JS não tratados visivelmente, em vez de falhar em silêncio.
+  window.addEventListener('error', (e) => {
+    document.title = 'Erro — ' + (e.message || 'falha desconhecida');
+    console.error('Erro não tratado:', e);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    console.error('Promise rejeitada:', e.reason);
+  });
+
+  if (!window.supabase) {
+    document.body.innerHTML = '<div style="padding:40px;color:#e5304a;font-family:sans-serif;text-align:center">Não foi possível carregar a biblioteca do Supabase. Verifique sua conexão e recarregue a página.</div>';
+    throw new Error('window.supabase ausente — script da CDN não carregou.');
+  }
+
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser = null;
   let currentItem = null; // item TMDB selecionado pro modal
