@@ -135,6 +135,11 @@
     width:100%; background:var(--card); border:1px solid var(--border); color:var(--text);
     font-family:var(--font); font-size:0.88rem; padding:10px 12px; border-radius:8px; outline:none;
   }
+  #sourceUrlInput {
+    font-size:0.78rem; /* fonte menor pra URLs longas */
+    overflow-x:auto; white-space:nowrap;
+    font-family: 'Courier New', monospace; /* monoespaçada facilita leitura de URLs */
+  }
   .modal input:focus, .modal select:focus { border-color:var(--accent2); }
   .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
