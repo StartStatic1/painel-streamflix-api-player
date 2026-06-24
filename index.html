@@ -66,8 +66,8 @@
     <div class="subtitle">Painel de Fontes de Vídeo</div>
 
     <div class="tabs">
-      <div class="tab active" id="tabLogin" onclick="switchMode('login')">Entrar</div>
-      <div class="tab" id="tabSignup" onclick="switchMode('signup')">Criar conta</div>
+      <div class="tab active" id="tabLogin">Entrar</div>
+      <div class="tab" id="tabSignup">Criar conta</div>
     </div>
 
     <form id="authForm">
@@ -89,37 +89,8 @@
   </div>
 
 <script>
-  // ── CONFIG ──
-  // Troque pela URL e chave ANON (pública) do seu projeto Supabase.
-  // NUNCA coloque a service_role key aqui — esta chave fica visível no navegador.
-  const SUPABASE_URL = 'https://gkujbjpvphuvrejpvvtz.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWpianB2cGh1dnJlanB2dnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQ2OTMsImV4cCI6MjA5NDI3MDY5M30.Zoqdn0V6SZOAfhz9kK9NgG6lniJdyVqihLsNT-O8Huw';
-
-  // Mostra qualquer erro de JavaScript não tratado direto na tela,
-  // pra nunca mais ter o sintoma de "clico e não acontece nada".
-  function showFatalError(text) {
-    const msg = document.getElementById('msg');
-    if (msg) {
-      msg.className = 'msg error';
-      msg.textContent = text;
-    } else {
-      alert(text);
-    }
-  }
-  window.addEventListener('error', (e) => {
-    showFatalError('Erro inesperado: ' + (e.message || 'falha desconhecida') + '. Veja o console para detalhes.');
-  });
-  window.addEventListener('unhandledrejection', (e) => {
-    showFatalError('Erro inesperado: ' + (e.reason?.message || e.reason || 'falha desconhecida') + '.');
-  });
-
-  if (!window.supabase) {
-    showFatalError('Não foi possível carregar a biblioteca do Supabase (script bloqueado ou sem internet). Recarregue a página.');
-    throw new Error('window.supabase ausente — script da CDN não carregou.');
-  }
-
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+  // ── UI (não depende de rede nem do Supabase) ──
+  // Definido primeiro e sempre funciona, mesmo se a CDN do Supabase falhar.
   let mode = 'login';
 
   function switchMode(m) {
@@ -130,59 +101,92 @@
     document.getElementById('hint').style.display = m === 'signup' ? 'block' : 'none';
     document.getElementById('msg').textContent = '';
   }
+
+  document.getElementById('tabLogin').addEventListener('click', () => switchMode('login'));
+  document.getElementById('tabSignup').addEventListener('click', () => switchMode('signup'));
   switchMode('login');
 
+  function showMsg(text, isError) {
+    const msg = document.getElementById('msg');
+    msg.className = 'msg' + (isError ? ' error' : ' success');
+    msg.textContent = text;
+  }
+
+  // Mostra qualquer erro de JavaScript não tratado direto na tela,
+  // pra nunca mais ter o sintoma de "clico e não acontece nada".
+  window.addEventListener('error', (e) => {
+    showMsg('Erro inesperado: ' + (e.message || 'falha desconhecida'), true);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    showMsg('Erro inesperado: ' + (e.reason?.message || e.reason || 'falha desconhecida'), true);
+  });
+
+  // ── CONFIG E CONEXÃO COM SUPABASE ──
+  const SUPABASE_URL = 'https://gkujbjpvphuvrejpvvtz.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWpianB2cGh1dnJlanB2dnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2OTQ2OTMsImV4cCI6MjA5NDI3MDY5M30.Zoqdn0V6SZOAfhz9kK9NgG6lniJdyVqihLsNT-O8Huw';
+
+  let db = null;
+  if (window.supabase) {
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    showMsg('Não foi possível carregar a biblioteca do Supabase. Verifique sua conexão e recarregue a página.', true);
+  }
+
   // Se já tem sessão ativa, manda direto pro dashboard
-  (async function checkSession() {
-    try {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) { showFatalError('Erro ao verificar sessão: ' + error.message); return; }
-      if (data.session) {
-        window.location.href = './dashboard.html';
+  if (db) {
+    (async function checkSession() {
+      try {
+        const { data, error } = await db.auth.getSession();
+        if (error) { showMsg('Erro ao verificar sessão: ' + error.message, true); return; }
+        if (data.session) {
+          window.location.href = './dashboard.html';
+        }
+      } catch (err) {
+        showMsg('Erro ao conectar com o Supabase: ' + err.message, true);
       }
-    } catch (err) {
-      showFatalError('Erro ao conectar com o Supabase: ' + err.message);
-    }
-  })();
+    })();
+  }
 
   document.getElementById('authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (!db) {
+      showMsg('Sem conexão com o Supabase. Recarregue a página e tente de novo.', true);
+      return;
+    }
+
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
-    const msg = document.getElementById('msg');
     const btn = document.getElementById('submitBtn');
 
     btn.disabled = true;
-    msg.className = 'msg';
-    msg.textContent = '';
+    showMsg('', false);
 
     try {
       if (mode === 'login') {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await db.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
         // confirma se esse usuário está autorizado na tabela vip_panel_admins
-        const { data: adminRow, error: adminErr } = await supabase
+        const { data: adminRow, error: adminErr } = await db
           .from('vip_panel_admins')
           .select('id')
           .eq('id', data.user.id)
           .maybeSingle();
 
         if (adminErr || !adminRow) {
-          await supabase.auth.signOut();
+          await db.auth.signOut();
           throw new Error('Sua conta existe, mas ainda não foi autorizada a acessar este painel.');
         }
 
         window.location.href = './dashboard.html';
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await db.auth.signUp({ email, password });
         if (error) throw error;
-        msg.className = 'msg success';
-        msg.textContent = 'Conta criada! Avise um admin para autorizar seu e-mail no banco antes de entrar.';
+        showMsg('Conta criada! Avise um admin para autorizar seu e-mail no banco antes de entrar.', false);
       }
     } catch (err) {
-      msg.className = 'msg error';
-      msg.textContent = err.message || 'Algo deu errado. Tente novamente.';
+      showMsg(err.message || 'Algo deu errado. Tente novamente.', true);
     } finally {
       btn.disabled = false;
     }
