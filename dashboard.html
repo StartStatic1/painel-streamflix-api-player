@@ -852,7 +852,9 @@
           </div>
           <div class="title-group-body">
             ${rowsHtml}
-            <button class="title-group-add" onclick="event.stopPropagation(); openModal({id:${first.tmdb_id}, title:${JSON.stringify(first.title)}, type:'${first.media_type}', poster_path:${JSON.stringify(first.poster_path)}})">${isTv ? '+ Adicionar episódio / servidor' : '+ Adicionar servidor'}</button>
+            <button class="title-group-add" onclick='event.stopPropagation(); openModal(${JSON.stringify({
+              id: first.tmdb_id, title: first.title, type: first.media_type, poster_path: first.poster_path
+            }).replace(/'/g, "&#39;")})'>${isTv ? '+ Adicionar episódio / servidor' : '+ Adicionar servidor'}</button>
           </div>
         </div>
       `;
