@@ -852,7 +852,7 @@
           </div>
           <div class="title-group-body">
             ${rowsHtml}
-            ${isTv ? `<button class="title-group-add" onclick="event.stopPropagation(); openModal({id:${first.tmdb_id}, title:${JSON.stringify(first.title)}, type:'tv', poster_path:${JSON.stringify(first.poster_path)}})">+ Adicionar episódio / servidor</button>` : ''}
+            `<button class="title-group-add" onclick="event.stopPropagation(); openModal({id:${first.tmdb_id}, title:${JSON.stringify(first.title)}, type:'${first.media_type}', poster_path:${JSON.stringify(first.poster_path)}})">${isTv ? '+ Adicionar episódio / servidor' : '+ Adicionar servidor'}</button>`
           </div>
         </div>
       `;
