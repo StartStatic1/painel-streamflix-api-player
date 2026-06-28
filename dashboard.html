@@ -305,32 +305,7 @@
       </div>
     </div>
 
-    <!-- UPLOAD DIRETO (EasyVidPlay via protocolo tus) -->
-    <div id="uploadBlock" style="margin-top:14px; padding:14px; background:var(--card); border:1px solid var(--border-soft); border-radius:10px;">
-      <div style="font-size:0.8rem; font-weight:700; margin-bottom:4px;">Subir vídeo agora (EasyVidPlay)</div>
-      <div style="font-size:0.72rem; color:var(--muted); margin-bottom:10px;">
-        Envia o arquivo direto do seu aparelho. Depois do envio, copie o link de "embed" na aba do vídeo no site da EasyVidPlay e cole no campo abaixo.
-      </div>
-      <input type="file" id="uploadFileInput" accept="video/*" style="display:none" onchange="startTusUpload(this.files[0])" />
-      <button type="button" onclick="document.getElementById('uploadFileInput').click()"
-        style="background:var(--accent); border:none; color:#fff; font-family:var(--font); font-weight:700; font-size:0.82rem; padding:10px 16px; border-radius:8px; cursor:pointer;">
-        Escolher arquivo de vídeo
-      </button>
-      <div id="uploadProgressWrap" style="display:none; margin-top:10px;">
-        <div style="font-size:0.74rem; color:var(--muted); margin-bottom:5px;" id="uploadProgressLabel">Enviando... 0%</div>
-        <div style="width:100%; height:7px; background:var(--surface); border-radius:6px; overflow:hidden;">
-          <div id="uploadProgressBar" style="width:0%; height:100%; background:var(--accent2); transition:width .2s;"></div>
-        </div>
-      </div>
-      <div id="uploadDoneBox" style="display:none; margin-top:10px;">
-        <div style="font-size:0.78rem; color:var(--green); font-weight:600; margin-bottom:8px;">✓ Arquivo enviado! Agora abra o vídeo no site da EasyVidPlay, copie o link de "embed" e cole aqui:</div>
-        <input type="text" id="uploadEmbedPasteInput" placeholder="Cole o link de embed copiado da EasyVidPlay" />
-        <button type="button" onclick="applyUploadedEmbedLink()"
-          style="margin-top:8px; background:var(--green); border:none; color:#04130a; font-family:var(--font); font-weight:700; font-size:0.8rem; padding:8px 14px; border-radius:8px; cursor:pointer;">
-          Usar esse link
-        </button>
-      </div>
-    </div>
+    <!-- Upload EasyVidPlay removido -->
 
     <label>URL do player / iframe</label>
     <input type="text" id="sourceUrlInput" placeholder="https://... ou http://ip:porta/movie/..." oninput="previewUrl(this.value)" />
@@ -343,7 +318,7 @@
     <div class="row2">
       <div>
         <label>Nome do servidor</label>
-        <input type="text" id="sourceLabelInput" placeholder="Ex: EasyVidPlay" value="EasyVidPlay" />
+        <input type="text" id="sourceLabelInput" placeholder="Ex: MegaEmbed, HLS, Servidor 1" value="" />
       </div>
       <div>
         <label>Prioridade</label>
@@ -435,93 +410,7 @@
     }
   }
 
-  // ── UPLOAD DIRETO VIA PROTOCOLO TUS (EasyVidPlay) ──
-  // O fluxo: 1) pedimos tusUrl+accessToken ao nosso proxy serverless (que
-  // guarda o token da conta em segredo); 2) enviamos o arquivo direto do
-  // navegador para esse tusUrl, em pedaços, com retomada automática se
-  // a conexão cair; 3) ao concluir, pedimos para o usuário colar o link
-  // de embed (a API deles não expõe esse link na documentação pública —
-  // só aparece na interface web do site), porque os dois processos
-  // (upload e geração do link de embed) não têm um endpoint público comum.
-  let tusUploadInstance = null;
-
-  async function startTusUpload(file) {
-    if (!file) return;
-    if (!window.tus) {
-      showToast('Biblioteca de upload não carregou. Recarregue a página.', true);
-      return;
-    }
-
-    document.getElementById('uploadProgressWrap').style.display = 'block';
-    document.getElementById('uploadDoneBox').style.display = 'none';
-    document.getElementById('uploadProgressLabel').textContent = 'Preparando envio...';
-    document.getElementById('uploadProgressBar').style.width = '0%';
-
-    let initData;
-    try {
-      const res = await fetch('/api/easyvidplay-upload-init');
-      initData = await res.json();
-      if (!res.ok) throw new Error(initData?.error || 'Erro ao iniciar upload');
-    } catch (e) {
-      showToast('Erro ao iniciar upload: ' + e.message, true);
-      document.getElementById('uploadProgressWrap').style.display = 'none';
-      return;
-    }
-
-    tusUploadInstance = new window.tus.Upload(file, {
-      endpoint: initData.tusUrl,
-      chunkSize: 52428800, // 50MB, conforme exigido pela EasyVidPlay
-      retryDelays: [0, 3000, 5000, 10000, 20000],
-      metadata: {
-        accessToken: initData.accessToken,
-        filename: file.name,
-        filetype: file.type || 'video/mp4'
-      },
-      onError: (error) => {
-        console.error('Erro no upload tus:', error);
-        showToast('Erro no envio: ' + error.message, true);
-        document.getElementById('uploadProgressWrap').style.display = 'none';
-      },
-      onProgress: (bytesUploaded, bytesTotal) => {
-        const pct = ((bytesUploaded / bytesTotal) * 100).toFixed(0);
-        document.getElementById('uploadProgressBar').style.width = pct + '%';
-        document.getElementById('uploadProgressLabel').textContent = `Enviando... ${pct}% (${(bytesUploaded/1048576).toFixed(0)}MB / ${(bytesTotal/1048576).toFixed(0)}MB)`;
-      },
-      onSuccess: () => {
-        document.getElementById('uploadProgressLabel').textContent = 'Envio concluído!';
-        document.getElementById('uploadDoneBox').style.display = 'block';
-        showToast('Vídeo enviado! Agora cole o link de embed.');
-      }
-    });
-
-    tusUploadInstance.start();
-  }
-
-  function applyUploadedEmbedLink() {
-    const link = document.getElementById('uploadEmbedPasteInput').value.trim();
-    if (!link) {
-      showToast('Cole o link de embed antes de continuar.', true);
-      return;
-    }
-    document.getElementById('sourceUrlInput').value = link;
-    previewUrl(link);
-    document.getElementById('uploadDoneBox').style.display = 'none';
-    document.getElementById('uploadProgressWrap').style.display = 'none';
-    document.getElementById('uploadEmbedPasteInput').value = '';
-    showToast('Link aplicado. Confira os campos e salve a fonte.');
-  }
-
-  function resetUploadBlock() {
-    if (tusUploadInstance) {
-      try { tusUploadInstance.abort(); } catch (e) {}
-      tusUploadInstance = null;
-    }
-    document.getElementById('uploadProgressWrap').style.display = 'none';
-    document.getElementById('uploadDoneBox').style.display = 'none';
-    document.getElementById('uploadProgressBar').style.width = '0%';
-    document.getElementById('uploadEmbedPasteInput').value = '';
-    document.getElementById('uploadFileInput').value = '';
-  }
+  // Upload EasyVidPlay removido
 
   function logout() {
     if (!db) { window.location.href = './index.html'; return; }
@@ -620,7 +509,7 @@
   function openModal(item) {
     currentItem = item;
     editingSourceId = null;
-    resetUploadBlock();
+
 
     document.getElementById('modalTitle').textContent = item.title;
     document.getElementById('modalSub').textContent =
@@ -632,7 +521,7 @@
     document.getElementById('seasonInput').value = 1;
     document.getElementById('episodeInput').value = 1;
     document.getElementById('sourceUrlInput').value = '';
-    document.getElementById('sourceLabelInput').value = 'EasyVidPlay';
+    document.getElementById('sourceLabelInput').value = '';
     document.getElementById('sourcePriorityInput').value = 10;
     document.getElementById('urlPreviewBox').style.display = 'none';
     document.getElementById('deleteInlineBtn').style.display = 'none';
@@ -645,7 +534,7 @@
   function openEditModal(sourceId) {
     const s = allSources.find(x => x.id === sourceId);
     if (!s) return;
-    resetUploadBlock();
+
 
     currentItem = {
       id: s.tmdb_id, title: s.title, type: s.media_type, poster_path: s.poster_path
@@ -688,7 +577,7 @@
     document.getElementById('modalOverlay').classList.remove('open');
     document.getElementById('urlPreviewBox').style.display = 'none';
     document.getElementById('urlPreviewFrame').innerHTML = '';
-    resetUploadBlock();
+
     currentItem = null;
     editingSourceId = null;
   }
