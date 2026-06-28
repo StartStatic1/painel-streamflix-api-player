@@ -374,8 +374,11 @@
   let allSources = [];         // cache local de todas as fontes carregadas
 
   // ── PREVIEW DE URL NO MODAL ──
+  // Mantido em sincronia com isDirectVideoUrl() do site (index.html):
+  // mesma lista de extensões/terminadores, pra o preview daqui não dizer
+  // uma coisa e o player do site fazer outra com a mesma URL.
   function isDirectVideo(url) {
-    return /\.(mp4|m3u8|ts|mkv|webm)(\?|$)/i.test(url);
+    return /\.(mp4|m3u8|mkv|webm)(\?|#|$)/i.test(url);
   }
   function previewUrl(url) {
     url = url.trim();
